@@ -1,5 +1,6 @@
 import streamlit as st
 import numpy as np
+import plotly.graph_objects as go
 import pandas as pd
 from black_scholes import call_price, put_price
 from greeks import delta, gamma, theta, vega, rho
@@ -47,4 +48,22 @@ greeks_data = {
 st.subheader("Option Greeks")
 st.table(pd.DataFrame(greeks_data))
 
+st.markdown("---")
+st.subheader("Payoff at Expiration")
+spot_range = np.linspace(max(1, S * 0.5), S * 1.5, 200)
+fig_pnl = go.Figure()
+
+if option_type in ["Call", "Both"]:
+    call_payoff = np.maximum(spot_range - K, 0) - call
+    fig_pnl.add_trace(go.Scatter(x=spot_range, y=call_payoff, name="Call P&L", line=dict(color='green')))
+if option_type in ["Put", "Both"]:
+    put_payoff = np.maximum(K - spot_range, 0) - put
+    fig_pnl.add_trace(go.Scatter(x=spot_range, y=put_payoff, name="Put P&L", line=dict(color='red')))
+
+fig_pnl.add_hline(y=0, line_dash="dash", line_color="gray")
+fig_pnl.add_vline(x=K, line_dash="dot", line_color="blue", annotation_text="Strike")
+fig_pnl.update_layout(title="P&L at Expiration", xaxis_title="Stock Price at Expiry", yaxis_title="Profit / Loss ($)")
+st.plotly_chart(fig_pnl, use_container_width=True)
+
+st.markdown("---")
 st.caption("Built with Black-Scholes model. For educational purposes only.")
