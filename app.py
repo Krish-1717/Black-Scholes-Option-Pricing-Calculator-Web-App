@@ -66,4 +66,17 @@ fig_pnl.update_layout(title="P&L at Expiration", xaxis_title="Stock Price at Exp
 st.plotly_chart(fig_pnl, use_container_width=True)
 
 st.markdown("---")
+st.subheader("Option Price Surface")
+vol_range = np.linspace(0.05, 0.80, 30)
+spot_range_3d = np.linspace(S * 0.6, S * 1.4, 30)
+Z = np.array([[call_price(s, K, T, r, v) for v in vol_range] for s in spot_range_3d])
+
+fig3d = go.Figure(data=[go.Surface(z=Z, x=vol_range * 100, y=spot_range_3d, colorscale='Viridis')])
+fig3d.update_layout(
+    title='Call Price Surface',
+    scene=dict(xaxis_title='Volatility (%)', yaxis_title='Stock Price', zaxis_title='Call Price')
+)
+st.plotly_chart(fig3d, use_container_width=True)
+
+st.markdown("---")
 st.caption("Built with Black-Scholes model. For educational purposes only.")
