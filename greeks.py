@@ -16,6 +16,7 @@ def gamma(S, K, T, r, sigma):
 
 
 def theta(S, K, T, r, sigma, option_type='call'):
+    """Theta expressed as per-day decay (divide annual theta by 365)."""
     D1 = d1(S, K, T, r, sigma)
     D2 = d2(S, K, T, r, sigma)
     term1 = -(S * norm.pdf(D1) * sigma) / (2 * np.sqrt(T))
