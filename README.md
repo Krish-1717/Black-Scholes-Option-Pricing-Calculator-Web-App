@@ -1,5 +1,7 @@
 # Black-Scholes Option Pricing Calculator
 
+![Python](https://img.shields.io/badge/python-3.9%2B-blue) ![Streamlit](https://img.shields.io/badge/streamlit-1.28%2B-red) ![License](https://img.shields.io/badge/license-MIT-green)
+
 A fully interactive web app for pricing European options, computing the Greeks, solving for implied volatility, and visualizing payoff diagrams and price surfaces. Built with Python and Streamlit.
 
 ---
