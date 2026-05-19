@@ -197,7 +197,8 @@ def format_market_cap(mc: float | None) -> str:
 def days_to_expiry(expiration_str: str) -> int:
     """Calendar days from today to expiration date (YYYY-MM-DD)."""
     try:
-        exp_date = datetime.strptime(expiration_str, "%Y-%m-%d")
-        return max((exp_date - datetime.today()).days, 0)
+        from datetime import date
+        exp_date = datetime.strptime(expiration_str, "%Y-%m-%d").date()
+        return max((exp_date - date.today()).days, 0)
     except Exception:
         return 30

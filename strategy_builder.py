@@ -22,7 +22,6 @@ Each leg is a dict:
 from __future__ import annotations
 
 import numpy as np
-import pandas as pd
 from black_scholes import call_price, put_price
 
 

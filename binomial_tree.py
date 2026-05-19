@@ -17,6 +17,7 @@ def binomial_price(
     n_steps: int = 200,
     option_type: str = "call",
     american: bool = False,
+    q: float = 0.0,
 ) -> float:
     """
     Price an option via the CRR binomial tree.
@@ -31,6 +32,7 @@ def binomial_price(
     n_steps   : number of time steps (more = more accurate)
     option_type : 'call' | 'put'
     american  : True to allow early exercise (American option)
+    q         : continuous dividend yield (decimal), default 0.0
 
     Returns
     -------
@@ -42,7 +44,7 @@ def binomial_price(
     dt = T / n_steps
     u = np.exp(sigma * np.sqrt(dt))
     d = 1.0 / u
-    p = (np.exp(r * dt) - d) / (u - d)
+    p = (np.exp((r - q) * dt) - d) / (u - d)
     discount = np.exp(-r * dt)
 
     # Terminal stock prices (vectorised)
@@ -82,6 +84,7 @@ def tree_for_viz(
     n_steps: int = 7,
     option_type: str = "call",
     american: bool = False,
+    q: float = 0.0,
 ) -> dict:
     """
     Build a small binomial tree (≤ n_steps) and return node data
@@ -100,7 +103,7 @@ def tree_for_viz(
     dt = T / n_viz
     u = np.exp(sigma * np.sqrt(dt))
     d = 1.0 / u
-    p = (np.exp(r * dt) - d) / (u - d)
+    p = (np.exp((r - q) * dt) - d) / (u - d)
     discount = np.exp(-r * dt)
 
     # Build stock and option trees (2D arrays indexed [step][j])
@@ -151,7 +154,7 @@ def tree_for_viz(
             )
 
     # High-precision price from a 200-step tree
-    price = binomial_price(S, K, T, r, sigma, 200, option_type, american)
+    price = binomial_price(S, K, T, r, sigma, 200, option_type, american, q)
 
     return {
         "price": price,

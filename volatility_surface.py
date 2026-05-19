@@ -13,7 +13,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from scipy.optimize import brentq
-from datetime import datetime
 
 from black_scholes import call_price, put_price
 

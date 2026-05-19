@@ -113,12 +113,14 @@ def enrich_chain(
     for _, row in df.iterrows():
         K = float(row["strike"])
         # Use yfinance's IV for BS theoretical price (more stable than recalculating)
-        yf_iv = row.get("impliedVolatility") or 0.25
-        yf_iv = max(float(yf_iv), 0.01) if not np.isnan(float(yf_iv or 0)) else 0.25
+        raw_iv = row.get("impliedVolatility")
+        yf_iv = 0.25 if (raw_iv is None or pd.isna(raw_iv) or float(raw_iv) <= 0) else float(raw_iv)
+        yf_iv = max(yf_iv, 0.01)
         bs_p = pricer(S, K, T, r, yf_iv)
         bs_prices.append(bs_p)
 
-        mid = float(row["mid_price"]) if not np.isnan(float(row["mid_price"] or 0)) else 0.0
+        raw_mid = row["mid_price"]
+        mid = 0.0 if (raw_mid is None or pd.isna(raw_mid)) else float(raw_mid)
         iv = implied_vol(mid, S, K, T, r, option_type) if mid > 0 else np.nan
         our_ivs.append(iv)
 

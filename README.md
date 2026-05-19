@@ -1,124 +1,112 @@
-# Black-Scholes Option Pricing Calculator
+# Black-Scholes Option Pricing Calculator — Premium Edition
 
-![Python](https://img.shields.io/badge/python-3.9%2B-blue) ![Streamlit](https://img.shields.io/badge/streamlit-1.28%2B-red) ![License](https://img.shields.io/badge/license-MIT-green)
-
-A fully interactive web app for pricing European options, computing the Greeks, solving for implied volatility, and visualizing payoff diagrams and price surfaces. Built with Python and Streamlit.
-
----
+A professional-grade options analytics web app built with Streamlit and Python.
 
 ## Features
 
-- **Call and Put pricing** using the Black-Scholes closed-form solution
-- **All five Greeks**: Delta, Gamma, Theta, Vega, Rho (call and put)
-- **Implied Volatility solver** using Brent's root-finding method
-- **P&L payoff diagram** at expiration (call, put, or both)
-- **3D option price surface** over volatility and spot price
-- **Interactive sidebar** sliders for all input parameters
+### Core Pricing
+- **Black-Scholes** closed-form pricing for European calls and puts
+- **Put-Call Parity** check displayed in real time
+- **Binomial Tree** (CRR model, 200 steps) for American and European options
+  - Visual tree with colour-coded early-exercise nodes
+  - American vs European price comparison
 
----
+### Live Market Data
+- **Ticker Lookup** — type any symbol (AAPL, SPY, etc.) to auto-fill:
+  - Current stock price, 52-week high/low, market cap, sector, beta, P/E
+  - 30-day historical volatility from log-returns
+  - Current 3-month T-bill risk-free rate (via `^IRX`)
+- Candlestick price chart and rolling historical-volatility chart
 
-## Tech Stack
+### Greeks
+**First-order:** Delta, Gamma, Theta, Vega, Rho
 
-| Layer | Library |
-|-------|---------|
-| Web UI | Streamlit |
-| Math / numerics | NumPy, SciPy |
-| Visualization | Plotly |
-| Data | Pandas |
+**Second-order:**
+- Charm (delta decay per calendar day)
+- Vanna (delta sensitivity to vol)
+- Vomma / Volga (vega sensitivity to vol)
+- Speed (gamma sensitivity to price)
+- Color (gamma decay per calendar day)
+- Ultima (third-order vol sensitivity)
 
----
+### Monte Carlo Simulation
+- 100,000-path GBM simulation with antithetic-variate variance reduction
+- Adjustable display paths and random seed
+- ITM/OTM terminal price distribution histogram
+- MC vs Black-Scholes price comparison with 95% confidence interval
+- Convergence analysis chart (price vs. number of paths)
+
+### Multi-Leg Strategy Builder
+Predefined strategies: Long Call/Put, Covered Call, Protective Put, Bull/Bear Spreads,
+Straddle, Strangle, Iron Condor, Iron Butterfly, Butterfly, Calendar Spread, Ratio Spread
+
+For each strategy:
+- At-expiry P&L diagram (with current-time BS curve overlay)
+- **P&L Scenario Heatmap** across stock prices AND time to expiry
+- Max profit, max loss, breakeven prices
+- Net strategy Greeks (delta, gamma, theta, vega)
+
+### Live Options Chain
+- Real market call/put prices from yfinance
+- Black-Scholes theoretical price and mispricing (%) for each strike
+- Colour-coded table: green = underpriced, red = overpriced (±5% threshold)
+- Implied volatility from market prices vs yfinance IV
+- **IV Smile** chart for selected expiry
+
+### Volatility Surface
+- **3D IV surface** across all available strikes and expirations
+- Live data from yfinance (up to 10 expirations)
+- ATM volatility term structure chart
+- Per-expiry vol smile
+- Falls back to a parametric synthetic surface (equity skew + smile + term structure)
+
+### P&L Scenario Heatmap (Single Option)
+- 2D heatmap: stock price × time remaining → P&L
+- Visualises theta decay and delta exposure simultaneously
+
+## File Structure
+
+```
+├── app.py                  Main Streamlit application (6-tab layout)
+├── black_scholes.py        Black-Scholes pricing formulas (d1, d2, call, put)
+├── greeks.py               First-order Greeks (delta, gamma, theta, vega, rho)
+├── advanced_greeks.py      Second/third-order Greeks (charm, vanna, vomma, speed, color, ultima)
+├── binomial_tree.py        CRR binomial tree (American/European)
+├── monte_carlo.py          GBM path simulation and MC pricer
+├── options_chain.py        Live chain enrichment with BS comparison and IV calculation
+├── strategy_builder.py     Multi-leg strategy P&L engine
+├── market_data.py          yfinance wrapper (stock info, HV, risk-free rate)
+├── volatility_surface.py   IV surface builder and vol smile extraction
+├── requirements.txt
+└── run.sh
+```
 
 ## Installation
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/Krish-1717/Black-Scholes-Option-Pricing-Calculator-Web-App.git
-cd Black-Scholes-Option-Pricing-Calculator-Web-App
-
-# 2. Create a virtual environment (recommended)
-python -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
-
-# 3. Install dependencies
 pip install -r requirements.txt
+```
 
-# 4. Run the app
+## Running
+
+```bash
 streamlit run app.py
 ```
 
-The app opens at `http://localhost:8501` by default.
-
----
-
-## Usage
-
-Use the **sidebar sliders** to set:
-
-| Parameter | Symbol | Description |
-|-----------|--------|-------------|
-| Stock Price | S | Current underlying price |
-| Strike Price | K | Option exercise price |
-| Time to Expiry | T | Years until expiration |
-| Risk-Free Rate | r | Annualized continuously compounded rate |
-| Volatility | σ | Annualized implied or historical vol |
-
-The main panel updates instantly to show prices, Greeks, and charts.
-
-### Implied Volatility
-
-Enter a market price under **Implied Volatility Calculator** and select call or put. The solver uses Brent's method to find the volatility that matches the observed price.
-
----
-
-## Project Structure
-
-```
-.
-├── app.py            # Streamlit front end
-├── black_scholes.py  # Core pricing functions (call, put, d1, d2)
-├── greeks.py         # Delta, Gamma, Theta, Vega, Rho
-├── requirements.txt
-├── .gitignore
-└── README.md
+Or use the helper script:
+```bash
+chmod +x run.sh && ./run.sh
 ```
 
----
+## Technical Notes
 
-## Black-Scholes Formula
+- All charts are interactive Plotly figures (hover, zoom, pan)
+- Market data is cached for 5 minutes via `@st.cache_data`
+- IV solver uses Brent's method (`scipy.optimize.brentq`) with a [0.01%, 1000%] search range
+- Monte Carlo uses antithetic variates (effectively 200k paths from 100k draws)
+- Binomial tree uses 200 steps for pricing, fewer for visualisation
+- Synthetic vol surface uses a parametric model: σ(K,T) = σ₀ + skew·ln(K/S) + smile·ln(K/S)² + term·√T
 
-For a European call option:
+## Disclaimer
 
-```
-C = S * N(d1) - K * e^(-rT) * N(d2)
-
-d1 = [ln(S/K) + (r + σ²/2) * T] / (σ * √T)
-d2 = d1 - σ * √T
-```
-
-Put-call parity gives the put price:
-
-```
-P = K * e^(-rT) * N(-d2) - S * N(-d1)
-```
-
-Where `N(·)` is the standard normal CDF.
-
----
-
-## Assumptions
-
-- European-style options (no early exercise)
-- No dividends
-- Constant volatility and risk-free rate
-- Log-normal distribution of returns
-- No transaction costs
-
----
-
-## License
-
-MIT License. Free to use and modify for personal or educational purposes.
-
----
-
-> Built for educational purposes. Not financial advice.
+Educational purposes only. Not financial advice. Options involve significant risk.

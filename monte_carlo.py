@@ -28,11 +28,13 @@ def mc_price(
     option_type: str = "call",
     n_paths: int = 100_000,
     seed: int = 42,
+    q: float = 0.0,
 ) -> tuple[float, float, np.ndarray]:
     """
     Price a European option via Monte Carlo under risk-neutral GBM.
 
     Uses antithetic variates (doubles effective paths, halves variance).
+    Includes continuous dividend yield q (Merton extension).
 
     Returns
     -------
@@ -45,7 +47,7 @@ def mc_price(
     Z_anti = -Z                                # antithetic pairs
 
     def terminal(z: np.ndarray) -> np.ndarray:
-        return S * np.exp((r - 0.5 * sigma ** 2) * T + sigma * np.sqrt(T) * z)
+        return S * np.exp((r - q - 0.5 * sigma ** 2) * T + sigma * np.sqrt(T) * z)
 
     ST      = terminal(Z)
     ST_anti = terminal(Z_anti)
@@ -169,8 +171,6 @@ def mc_convergence(
     # Pre-generate all random numbers once
     rng = np.random.default_rng(seed)
     Z_all = rng.standard_normal(max_paths)
-
-    bs = call_price(S, K, T, r, sigma) if option_type == "call" else put_price(S, K, T, r, sigma)
 
     for idx, n in enumerate(path_counts):
         Z = Z_all[:n]

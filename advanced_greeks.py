@@ -29,30 +29,28 @@ from black_scholes import d1, d2
 # ---------------------------------------------------------------------------
 
 def charm(S: float, K: float, T: float, r: float, sigma: float,
-          option_type: str = "call") -> float:
+          option_type: str = "call", q: float = 0.0) -> float:
     """
     Rate of change of delta per calendar day.
 
     Charm = -∂Δ/∂τ  (where τ = time to expiry), divided by 365.
     A positive value means delta is rising as time passes.
 
-    Analytical formula (q = 0):
-        d(N(d1))/dτ = N'(d1) · (2rT - d2·σ√T) / (2T·σ√T)
-        Charm = -d(N(d1))/dτ  / 365
+    Includes continuous dividend yield q (Merton extension).
     """
     if T <= 1e-8:
         return 0.0
 
-    D1 = d1(S, K, T, r, sigma)
-    D2 = d2(S, K, T, r, sigma)
+    D1 = d1(S, K, T, r, sigma, q)
+    D2 = d2(S, K, T, r, sigma, q)
 
-    # dDelta/dT (T = time to expiry)
-    d_delta_d_tau = (
-        norm.pdf(D1) * (2.0 * r * T - D2 * sigma * np.sqrt(T))
+    # dDelta/dT (T = time to expiry) with dividend yield
+    d_delta_d_tau = np.exp(-q * T) * (
+        norm.pdf(D1) * (2.0 * (r - q) * T - D2 * sigma * np.sqrt(T))
         / (2.0 * T * sigma * np.sqrt(T))
+        + q * norm.cdf(D1)
     )
     # Charm = -dDelta/dTau per calendar day
-    # (same sign for calls and puts — put delta = N(d1)-1, derivative unchanged)
     return -d_delta_d_tau / 365.0
 
 
@@ -60,39 +58,41 @@ def charm(S: float, K: float, T: float, r: float, sigma: float,
 # Vanna  (DdeltaDvol / DvegaDspot)
 # ---------------------------------------------------------------------------
 
-def vanna(S: float, K: float, T: float, r: float, sigma: float) -> float:
+def vanna(S: float, K: float, T: float, r: float, sigma: float,
+          q: float = 0.0) -> float:
     """
     Sensitivity of delta to a change in volatility.
     Equivalently, sensitivity of vega to a change in spot.
 
-    Vanna = -N'(d1) · d2 / σ
+    Vanna = -e^(-qT) · N'(d1) · d2 / σ
     """
     if T <= 1e-8:
         return 0.0
 
-    D1 = d1(S, K, T, r, sigma)
-    D2 = d2(S, K, T, r, sigma)
-    return -norm.pdf(D1) * D2 / sigma
+    D1 = d1(S, K, T, r, sigma, q)
+    D2 = d2(S, K, T, r, sigma, q)
+    return -np.exp(-q * T) * norm.pdf(D1) * D2 / sigma
 
 
 # ---------------------------------------------------------------------------
 # Vomma / Volga  (DvegaDvol)
 # ---------------------------------------------------------------------------
 
-def vomma(S: float, K: float, T: float, r: float, sigma: float) -> float:
+def vomma(S: float, K: float, T: float, r: float, sigma: float,
+          q: float = 0.0) -> float:
     """
     Rate of change of vega with respect to volatility.
     Also called Volga.
 
     Vomma = Vega_raw · d1·d2 / σ
-    where Vega_raw = S · N'(d1) · √T   (unscaled vega)
+    where Vega_raw = S · e^(-qT) · N'(d1) · √T   (unscaled vega)
     """
     if T <= 1e-8:
         return 0.0
 
-    D1 = d1(S, K, T, r, sigma)
-    D2 = d2(S, K, T, r, sigma)
-    raw_vega = S * norm.pdf(D1) * np.sqrt(T)
+    D1 = d1(S, K, T, r, sigma, q)
+    D2 = d2(S, K, T, r, sigma, q)
+    raw_vega = S * np.exp(-q * T) * norm.pdf(D1) * np.sqrt(T)
     return raw_vega * D1 * D2 / sigma
 
 
@@ -100,7 +100,8 @@ def vomma(S: float, K: float, T: float, r: float, sigma: float) -> float:
 # Speed  (DgammaDspot)
 # ---------------------------------------------------------------------------
 
-def speed(S: float, K: float, T: float, r: float, sigma: float) -> float:
+def speed(S: float, K: float, T: float, r: float, sigma: float,
+          q: float = 0.0) -> float:
     """
     Rate of change of gamma with respect to the stock price.
     Third partial derivative of the option price with respect to spot.
@@ -110,8 +111,8 @@ def speed(S: float, K: float, T: float, r: float, sigma: float) -> float:
     if T <= 1e-8:
         return 0.0
 
-    D1 = d1(S, K, T, r, sigma)
-    gamma_val = norm.pdf(D1) / (S * sigma * np.sqrt(T))
+    D1 = d1(S, K, T, r, sigma, q)
+    gamma_val = np.exp(-q * T) * norm.pdf(D1) / (S * sigma * np.sqrt(T))
     return -gamma_val / S * (1.0 + D1 / (sigma * np.sqrt(T)))
 
 
@@ -119,7 +120,8 @@ def speed(S: float, K: float, T: float, r: float, sigma: float) -> float:
 # Color  (DgammaDtime)
 # ---------------------------------------------------------------------------
 
-def color(S: float, K: float, T: float, r: float, sigma: float) -> float:
+def color(S: float, K: float, T: float, r: float, sigma: float,
+          q: float = 0.0) -> float:
     """
     Rate of change of gamma per calendar day (Gamma decay).
 
@@ -134,8 +136,8 @@ def color(S: float, K: float, T: float, r: float, sigma: float) -> float:
     def _gamma(T_val: float) -> float:
         if T_val <= 0:
             return 0.0
-        D1 = d1(S, K, T_val, r, sigma)
-        return norm.pdf(D1) / (S * sigma * np.sqrt(T_val))
+        D1 = d1(S, K, T_val, r, sigma, q)
+        return np.exp(-q * T_val) * norm.pdf(D1) / (S * sigma * np.sqrt(T_val))
 
     # dGamma/dT (T = time to expiry) via central differences
     d_gamma_d_tau = (_gamma(T + eps) - _gamma(T - eps)) / (2.0 * eps)
@@ -148,7 +150,8 @@ def color(S: float, K: float, T: float, r: float, sigma: float) -> float:
 # Ultima  (third-order vol sensitivity)
 # ---------------------------------------------------------------------------
 
-def ultima(S: float, K: float, T: float, r: float, sigma: float) -> float:
+def ultima(S: float, K: float, T: float, r: float, sigma: float,
+           q: float = 0.0) -> float:
     """
     Third derivative of option price with respect to volatility.
     Rate of change of Vomma with respect to vol.
@@ -158,9 +161,9 @@ def ultima(S: float, K: float, T: float, r: float, sigma: float) -> float:
     if T <= 1e-8:
         return 0.0
 
-    D1 = d1(S, K, T, r, sigma)
-    D2 = d2(S, K, T, r, sigma)
-    raw_vega = S * norm.pdf(D1) * np.sqrt(T)
+    D1 = d1(S, K, T, r, sigma, q)
+    D2 = d2(S, K, T, r, sigma, q)
+    raw_vega = S * np.exp(-q * T) * norm.pdf(D1) * np.sqrt(T)
     return -(raw_vega / sigma ** 2) * (
         D1 * D2 * (1.0 - D1 * D2) + D1 ** 2 + D2 ** 2
     )
@@ -171,13 +174,13 @@ def ultima(S: float, K: float, T: float, r: float, sigma: float) -> float:
 # ---------------------------------------------------------------------------
 
 def all_advanced_greeks(S: float, K: float, T: float, r: float, sigma: float,
-                         option_type: str = "call") -> dict:
+                         option_type: str = "call", q: float = 0.0) -> dict:
     """Return all second- and third-order Greeks in a single dict."""
     return {
-        "Charm (per day)":  charm(S, K, T, r, sigma, option_type),
-        "Vanna":            vanna(S, K, T, r, sigma),
-        "Vomma":            vomma(S, K, T, r, sigma),
-        "Speed":            speed(S, K, T, r, sigma),
-        "Color (per day)":  color(S, K, T, r, sigma),
-        "Ultima":           ultima(S, K, T, r, sigma),
+        "Charm (per day)":  charm(S, K, T, r, sigma, option_type, q),
+        "Vanna":            vanna(S, K, T, r, sigma, q),
+        "Vomma":            vomma(S, K, T, r, sigma, q),
+        "Speed":            speed(S, K, T, r, sigma, q),
+        "Color (per day)":  color(S, K, T, r, sigma, q),
+        "Ultima":           ultima(S, K, T, r, sigma, q),
     }
